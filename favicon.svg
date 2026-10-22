@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Bloco de notas: folha, faixa superior, espiral e linhas da pauta -->
+  <rect x="10" y="9" width="44" height="51" rx="8" fill="#FFFDF8"/>
+  <path d="M18 9h28a8 8 0 0 1 8 8v6H10v-6a8 8 0 0 1 8-8z" fill="#B4532A"/>
+  <rect x="10" y="9" width="44" height="51" rx="8" fill="none" stroke="#2B2522" stroke-width="3"/>
+  <g fill="#2B2522">
+    <rect x="18.5" y="3" width="5" height="13" rx="2.5"/>
+    <rect x="29.5" y="3" width="5" height="13" rx="2.5"/>
+    <rect x="40.5" y="3" width="5" height="13" rx="2.5"/>
+  </g>
+  <path d="M18 33.5l3 3 5.5-6.5" fill="none" stroke="#2C7A4B" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M31 34h15M18 43h28M18 51.5h18" fill="none" stroke="#CFC6B8" stroke-width="3.2" stroke-linecap="round"/>
+</svg>
