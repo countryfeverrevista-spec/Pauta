@@ -73,21 +73,21 @@ const DEFAULT = {
       ["Pin'Up", 1]
     ] },
     { dia: 'Quinta', data: '22/10/2026', tarefas: [
-      ['Responder WhatsApp do Carlinhos', 0],
-      ['Manter a porta da redação fechada (fixo)', 0],
-      ['Receber convidados sempre com 1 hora de antecedência (fixo)', 0],
+      ['Responder WhatsApp do Carlinhos', 1],
+      ['Manter a porta da redação fechada (fixo)', 1],
+      ['Receber convidados sempre com 1 hora de antecedência (fixo)', 1],
       ['Publicar programas no site — 2 programas (fixo)', 0],
-      ['Imprimir pauta do programa das 11h30 (fixo)', 0],
-      ["Montar 3 comentários de YouTube — Pin'Up", 0],
-      ['Texto dos programas para prestação de link, com data (Boneco)', 0],
+      ['Imprimir pauta do programa das 11h30 (fixo)', 1],
+      ["Montar 3 comentários de YouTube — Pin'Up", 1],
+      ['Texto dos programas para prestação de link, com data (Boneco)', 1],
       ['Prestação dos programas (fixo)', 0],
-      ['Solicitar contato para envio de link com os convidados', 0],
+      ['Solicitar contato para envio de link com os convidados', 1],
       ["Colocar na TV da recepção — Pin'Up e Juju Cizotto — 14h50 (sempre o último programa)", 0],
       ['Colocar o ao vivo depois do programa', 0],
       ['Colocar fotos no site e mandar para o contratante — Prefeita de Poloni (texto e data — pegar infos no site da Prefeitura)', 0],
       ['Fazer o carrossel', 0],
       ['Subir para o site as fotos do evento e Arena News (enviar link CP e JU e contratantes) — mandar para a prefeita Andreia', 0],
-      ['Vincular itens na revista', 0],
+      ['Vincular itens na revista', 1],
       ['Realizar a prova da revista', 0]
     ] },
     { dia: 'Sexta', data: '23/10/2026', tarefas: [
@@ -222,9 +222,21 @@ if (!TABS[tab]) tab = 'pauta';
 function load() {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return Object.assign(clone(DEFAULT), JSON.parse(raw));
+    if (raw) return markThursdayOks(Object.assign(clone(DEFAULT), JSON.parse(raw)));
   } catch (e) {}
   return clone(DEFAULT);
+}
+
+// Uma única vez: aplica na pauta já salva os OKs de quinta 22/10 enviados no texto da pauta
+function markThursdayOks(s) {
+  const flag = 'pauta-arena-oks-2210';
+  if (localStorage.getItem(flag)) return s;
+  const oks = DEFAULT.semana.find(d => d.data === '22/10/2026').tarefas.filter(t => t.feito).map(t => t.texto);
+  const day = s.semana.find(d => d.data === '22/10/2026');
+  if (day) day.tarefas.forEach(t => { if (oks.includes(t.texto)) t.feito = true; });
+  localStorage.setItem(flag, '1');
+  localStorage.setItem(KEY, JSON.stringify(s));
+  return s;
 }
 
 const hhmm = d => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
@@ -487,10 +499,10 @@ function renderPauta() {
       <h2 class="hero-title">${esc(heroDate)}</h2>
       <p class="hero-sub">${esc(heroSub)} · ${esc(state.info.revista)} ${esc(state.info.edicao)}</p>
     </div>
-    <div class="grid four" id="summary">${summaryHTML()}</div>
+    <div class="grid four no-image" id="summary">${summaryHTML()}</div>
 
     <section>
-      <div class="section-head"><div><p class="eyebrow">01 · Revista</p><h2>${esc(state.info.revista)} — ${esc(state.info.mes)}</h2></div></div>
+      <div class="section-head"><div><p class="eyebrow">01 · Revista</p><h2>Descrição da revista ${esc(state.info.revista)} — Edição ${esc(state.info.edicao)} · Ano ${esc(state.info.ano)}</h2></div></div>
       <div class="card" style="margin-bottom:16px">
         <h3>Ficha da edição</h3>
         <div class="fields">${INFO_FIELDS.map(([k, l]) => `<label class="field"><span>${l}</span>${ed(`info.${k}`, { status: k === 'anunciosStatus' })}</label>`).join('')}</div>
@@ -518,7 +530,7 @@ function renderPauta() {
       <div class="days">${days}</div>
     </section>
 
-    <section class="callout">
+    <section class="callout no-image">
       <h3>Pontos para confirmar</h3>
       ${list('confirmar', 'Novo ponto', 'Ponto')}
     </section>`;
@@ -823,8 +835,8 @@ document.addEventListener('click', async e => {
     closeMenus();
     const x = t.dataset.export;
     if (x === 'md') exportMarkdown();
-    else if (x.startsWith('wa')) exportWhatsApp(x === 'wa-all' ? 'all' : 'tab');
-    else exportImage(x === 'img-all' ? 'all' : 'tab');
+    else if (x === 'wa') exportWhatsApp();
+    else exportImage();
     return;
   }
 
@@ -977,23 +989,13 @@ function loadHtml2Canvas() {
   });
 }
 
-// Cópias das abas (com título de seção quando for a pauta completa)
-function clonePanels(scope) {
-  const ids = scope === 'all' ? Object.keys(TABS) : [tab];
-  const out = [];
-  ids.forEach(id => {
-    if (scope === 'all') {
-      const title = document.createElement('h2');
-      title.className = 'export-section';
-      title.textContent = TABS[id];
-      out.push(title);
-    }
-    const c = $(`#panel-${id}`).cloneNode(true);
-    c.hidden = false;
-    c.removeAttribute('id');
-    out.push(c);
-  });
-  return out;
+// As imagens levam só a pauta (revista, matérias, programas e semana): sem resumo, pontos para confirmar e outras abas
+function clonePanels() {
+  const c = $('#panel-pauta').cloneNode(true);
+  c.hidden = false;
+  c.removeAttribute('id');
+  c.querySelectorAll('.no-image, .no-export').forEach(el => el.remove());
+  return [c];
 }
 
 /* ---------- Pasta das imagens (Imagens\Pauta - Imagens) ---------- */
@@ -1054,7 +1056,7 @@ async function saveImages(files, folder) {
   toast(files.length > 1 ? `${files.length} imagens exportadas` : 'Imagem exportada');
 }
 
-async function exportImage(scope) {
+async function exportImage() {
   const folder = await imageFolder();
   toast('Gerando imagem…');
   try {
@@ -1066,14 +1068,14 @@ async function exportImage(scope) {
   const h = state.header, i = state.info;
   const sheet = document.createElement('div');
   sheet.className = 'export-sheet exporting';
-  sheet.innerHTML = `<div class="export-head"><div class="brand-logo lg">${logo('arenacp')}</div><div><h1>Pauta diária — ${esc(h.data)}</h1><p>${esc(h.responsavel)} · ${esc(h.funcao)} · ${esc(i.revista)} — Edição ${esc(i.edicao)}</p></div></div>`;
-  clonePanels(scope).forEach(n => sheet.appendChild(n));
+  sheet.innerHTML = `<div class="export-head"><div class="brand-logo lg">${logo('arenacp')}</div><div><h1>Pauta ${esc(h.responsavel)} — ${esc(h.funcao)}</h1><p>${esc(h.data)} · ${esc(i.revista)} — Edição ${esc(i.edicao)}</p></div></div>`;
+  clonePanels().forEach(n => sheet.appendChild(n));
   document.body.appendChild(sheet);
   try {
     const scale = Math.min(2, 30000 / sheet.offsetHeight);
     const canvas = await html2canvas(sheet, { backgroundColor: getComputedStyle(document.body).backgroundColor, scale, logging: false });
     const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
-    const name = `Pauta ${fileDate()}${scope === 'all' ? '' : ' - ' + TABS[tab]}.png`;
+    const name = `Pauta ${fileDate()}.png`;
     await saveImages([new File([blob], name, { type: 'image/png' })], folder);
   } catch (err) {
     toast('Não foi possível gerar a imagem');
@@ -1100,11 +1102,11 @@ function waPage(num) {
   const h = state.header, i = state.info;
   const page = document.createElement('div');
   page.className = 'wa-page exporting';
-  page.innerHTML = `<div class="wa-head"><div class="brand-logo">${logo('arenacp-mark') || '<div class="logo">CP</div>'}</div><div><b>Pauta diária · ${esc(h.data)}</b><span>${esc(h.responsavel)} · ${esc(i.revista)} ${esc(i.edicao)}</span></div><span class="wa-num">${num}</span></div><div class="wa-body"></div>`;
+  page.innerHTML = `<div class="wa-head"><div class="brand-logo">${logo('arenacp-mark') || '<div class="logo">CP</div>'}</div><div><b>Pauta ${esc(h.responsavel)} · ${esc(h.data)}</b><span>${esc(h.funcao)} · ${esc(i.revista)} ${esc(i.edicao)}</span></div><span class="wa-num">${num}</span></div><div class="wa-body"></div>`;
   return page;
 }
 
-async function exportWhatsApp(scope) {
+async function exportWhatsApp() {
   const folder = await imageFolder();
   toast('Gerando imagens…');
   try {
@@ -1116,7 +1118,7 @@ async function exportWhatsApp(scope) {
 
   // Títulos ficam sempre junto com o bloco seguinte
   const atoms = [];
-  clonePanels(scope).forEach(n => (n.classList.contains('panel') ? atomsOf(n, atoms) : atoms.push(n)));
+  clonePanels().forEach(n => atomsOf(n, atoms));
   const groups = [];
   let pending = [];
   atoms.forEach(a => {
@@ -1180,7 +1182,7 @@ async function exportWhatsApp(scope) {
     probe.remove();
 
     const files = [];
-    const base = `Pauta ${fileDate()}${scope === 'all' ? '' : ' - ' + TABS[tab]}`;
+    const base = `Pauta ${fileDate()}`;
     const bg = getComputedStyle(document.body).backgroundColor;
     for (let p = 0; p < pages.length; p++) {
       const page = waPage(`${p + 1}/${pages.length}`);
